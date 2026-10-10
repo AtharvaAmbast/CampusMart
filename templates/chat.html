@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Chat with {{ display_name }}</h5>
+                <a href="{{ url_for('inbox') }}" class="btn btn-sm btn-light text-primary">Back to Inbox</a>
+            </div>
+            <div class="card-body" id="chatBox" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                <!-- Messages -->
+            </div>
+            <div class="card-footer">
+                <div class="input-group">
+                    <input type="text" id="msgInput" class="form-control" placeholder="Type your message...">
+                    <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const receiverId = {{ receiver.id }};
+    const currentUserId = {{ current_user_id }};
+    function loadMessages() {
+        fetch(`/api/messages/${receiverId}`)
+            .then(res => res.json())
+            .then(data => {
+                const chatBox = document.getElementById('chatBox');
+                chatBox.innerHTML = '';
+                if(data.status === 'success') {
+                    data.data.forEach(msg => {
+                        const isMe = msg.sender_id === currentUserId;
+                        const align = isMe ? 'text-end' : 'text-start';
+                        const bg = isMe ? 'bg-primary text-white' : 'bg-white border';
+                        chatBox.innerHTML += `
+                            <div class="mb-2 ${align}">
+                                <div class="d-inline-block p-2 rounded ${bg}" style="max-width: 75%; text-align: left;">
+                                    ${msg.content}
+                                    <div class="small ${isMe ? 'text-light' : 'text-muted'}" style="font-size: 0.7em;">${msg.timestamp}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            });
+    }
+    function sendMessage() {
+        const input = document.getElementById('msgInput');
+        if(!input.value.trim()) return;
+        fetch(`/api/messages/${receiverId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: input.value.trim()})
+        }).then(() => { input.value = ''; loadMessages(); });
+    }
+    loadMessages();
+    setInterval(loadMessages, 3000);
+    document.getElementById('msgInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+{% endblock %}
